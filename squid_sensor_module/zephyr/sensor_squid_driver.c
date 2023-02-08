@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "hello_world_driver.h"
+#include "sensor_squid_driver.h"
 #include <zephyr/types.h>
 #include <zephyr/sys/printk.h>
 #include <zephyr/syscall_handler.h>
@@ -35,7 +35,7 @@ static void print_impl(const struct device *dev)
 #ifdef CONFIG_USERSPACE
 static inline void z_vrfy_hello_world_print(const struct device *dev)
 {
-	Z_OOPS(Z_SYSCALL_DRIVER_HELLO_WORLD(dev, print));
+	Z_OOPS(Z_SYSCALL_DRIVER_SENSOR_SQUID(dev, print));
 
 	z_impl_hello_world_print(dev);
 }

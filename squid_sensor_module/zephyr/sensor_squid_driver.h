@@ -3,8 +3,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#ifndef __HELLO_WORLD_DRIVER_H__
-#define __HELLO_WORLD_DRIVER_H__
+#ifndef __SENSOR_SQUID_DRIVER_H__
+#define __SENSOR_SQUID_DRIVER_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,6 +44,6 @@ static inline void z_impl_hello_world_print(const struct device *dev)
 }
 #endif
 
-#include <syscalls/hello_world_driver.h>
+#include <syscalls/sensor_squid_driver.h>
 
 #endif /* __HELLO_WORLD_DRIVER_H__ */

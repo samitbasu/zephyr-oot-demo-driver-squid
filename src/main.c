@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "hello_world_driver.h"
+#include "sensor_squid_driver.h"
 #include <stdio.h>
 #include <zephyr/kernel.h>
 
