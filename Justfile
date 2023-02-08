@@ -4,4 +4,10 @@ build:
 
 
 flash:
-	west flash
+	nrfjprog --program build/zephyr/zephyr.hex --sectoranduicrerase --verify -f NRF52
+
+
+clean:
+	rm -rf build
+	
+	
