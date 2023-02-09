@@ -27,8 +27,7 @@ void main(void)
 
 	while (1)
 	{
-		sensor_squid_led(dev, state);
-		state = !state;
+		sensor_squid_led(dev, !sensor_squid_state(dev));
 		k_msleep(SLEEP_TIME_MS);
 	}
 }

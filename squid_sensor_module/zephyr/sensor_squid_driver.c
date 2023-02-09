@@ -51,9 +51,14 @@ void sensor_squid_led(const struct device *dev, bool state)
 {
 	const struct sensor_squid_config *config = dev->config;
 	struct sensor_squid_data *data = dev->data;
-	printk("SET TO %d\n", state);
 	gpio_pin_set_dt(&config->pin, state);
 	data->led_state = state;
+}
+
+bool sensor_squid_state(const struct device *dev)
+{
+	struct sensor_squid_data *data = dev->data;
+	return data->led_state;
 }
 
 // The config struct is static and initialized at compile time.

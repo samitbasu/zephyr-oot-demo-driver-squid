@@ -23,7 +23,7 @@ extern "C"
 	/**
 	 * Retrieve the state of the LED...
 	 */
-	//	bool sensor_squid_state(const struct device *dev);
+	bool sensor_squid_state(const struct device *dev);
 
 	/**
 	 * Send a greeting...
