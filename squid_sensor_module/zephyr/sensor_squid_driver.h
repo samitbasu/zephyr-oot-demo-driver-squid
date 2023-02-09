@@ -6,44 +6,32 @@
 #ifndef __SENSOR_SQUID_DRIVER_H__
 #define __SENSOR_SQUID_DRIVER_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <stdint.h>
 
 #include <zephyr/device.h>
 
-/*
- * This 'Hello World' driver has a 'print' syscall that prints the
- * famous 'Hello World!' string.
- *
- * The string is formatted with some internal driver data to
- * demonstrate that drivers are initialized during the boot process.
- *
- * The driver exists to demonstrate (and test) custom drivers that are
- * maintained outside of Zephyr.
- */
-__subsystem struct hello_world_driver_api {
-	/* This struct has a member called 'print'. 'print' is function
-	 * pointer to a function that takes 'struct device *dev' as an
-	 * argument and returns 'void'.
-	 */
-	void (*print)(const struct device *dev);
-};
-
-__syscall     void        hello_world_print(const struct device *dev);
-static inline void z_impl_hello_world_print(const struct device *dev)
+#ifdef __cplusplus
+extern "C"
 {
-	const struct hello_world_driver_api *api = dev->api;
+#endif
 
-	__ASSERT(api->print, "Callback pointer should not be NULL");
+	/**
+	 * Turn on the LED... Very sparkles!
+	 */
+	void sensor_squid_led(const struct device *dev, bool state);
 
-	api->print(dev);
-}
+	/**
+	 * Retrieve the state of the LED...
+	 */
+	//	bool sensor_squid_state(const struct device *dev);
+
+	/**
+	 * Send a greeting...
+	 */
+	//	void sensor_squid_greet(const struct device *dev, int number);
 
 #ifdef __cplusplus
 }
 #endif
 
-#include <syscalls/sensor_squid_driver.h>
-
-#endif /* __HELLO_WORLD_DRIVER_H__ */
+#endif /* __SENSOR_SQUID_DRIVER_H__ */
