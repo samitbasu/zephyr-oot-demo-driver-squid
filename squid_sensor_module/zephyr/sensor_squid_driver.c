@@ -11,9 +11,34 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/sys/printk.h>
+#include <string.h>
 
 #define LED0_NODE DT_ALIAS(led0)
 #define SPI1_NODE DT_NODELABEL(spi1)
+
+#define MAX7219_SEGMENTS_PER_DIGIT 8
+#define MAX7219_DIGITS_PER_DEVICE 8
+
+/* clang-format off */
+
+/* MAX7219 registers and fields */
+#define MAX7219_REG_NOOP		0x00
+#define MAX7219_NOOP			0x00
+
+#define MAX7219_REG_DECODE_MODE		0x09
+#define MAX7219_NO_DECODE		0x00
+
+#define MAX7219_REG_INTENSITY		0x0A
+
+#define MAX7219_REG_SCAN_LIMIT		0x0B
+
+#define MAX7219_REG_SHUTDOWN		0x0C
+#define MAX7219_SHUTDOWN_MODE		0x00
+#define MAX7219_LEAVE_SHUTDOWN_MODE	0x01
+
+#define MAX7219_REG_DISPLAY_TEST	0x0F
+#define MAX7219_LEAVE_DISPLAY_TEST_MODE	0x00
+#define MAX7219_DISPLAY_TEST_MODE	0x01
 
 /**
  * This struct contains data needed by the driver that needs to be mutable.
@@ -21,6 +46,8 @@
 struct sensor_squid_data
 {
 	bool led_state;
+	uint8_t digit_buf[8];
+	uint8_t tx_buf[16];
 };
 
 /**
@@ -31,6 +58,24 @@ struct sensor_squid_config
 	struct gpio_dt_spec pin;
 	struct spi_dt_spec spi;
 };
+
+static int max7219_transmit(const struct device *dev, const uint8_t addr, const uint8_t value)
+{
+	struct sensor_squid_data *dev_data = dev->data;
+	const struct sensor_squid_config *dev_config = dev->config;
+	const struct spi_buf tx_buf = {
+		.buf = dev_data->tx_buf,
+		.len = 2,
+	};
+	const struct spi_buf_set tx_bufs = {
+		.buffers = &tx_buf,
+		.count = 1U,
+	};
+	dev_data->tx_buf[0] = addr;
+	dev_data->tx_buf[1] = value;
+
+	return spi_write_dt(&dev_config->spi, &tx_bufs);
+}
 
 static int
 sensor_squid_init(const struct device *dev)
@@ -52,6 +97,17 @@ sensor_squid_init(const struct device *dev)
 		return -ENODEV;
 	}
 	printk("SPI INITIALIZED\n");
+	memset(data->digit_buf, 0xA0, 8);
+	// Exit test mode
+	
+	max7219_transmit(dev, MAX7219_REG_DISPLAY_TEST, MAX7219_LEAVE_DISPLAY_TEST_MODE);
+	max7219_transmit(dev, MAX7219_REG_DECODE_MODE, MAX7219_NO_DECODE);
+	max7219_transmit(dev, MAX7219_REG_INTENSITY, 0x3);
+	max7219_transmit(dev, MAX7219_REG_SCAN_LIMIT, 7);
+	max7219_transmit(dev, 1, 0x5F);
+	max7219_transmit(dev, 2, 0x43);
+	max7219_transmit(dev, 3, 0xA2);
+	max7219_transmit(dev, MAX7219_REG_SHUTDOWN, MAX7219_LEAVE_SHUTDOWN_MODE);
 	data->led_state = false;
 	return 0;
 }
@@ -73,19 +129,23 @@ bool sensor_squid_state(const struct device *dev)
 // The config struct is static and initialized at compile time.
 static const struct sensor_squid_config sensor_squid_config_inst = {
 	.pin = GPIO_DT_SPEC_GET(LED0_NODE, gpios),
-	.spi = SPI_DT_SPEC_GET(SPI1_NODE, SPI_OP_MODE_MASTER | SPI_TRANSFER_MSB | SPI_WORD_SET(8), 0),
-};
+	.spi = {
+		.bus = DEVICE_DT_GET(SPI1_NODE),
+		.config = {
+			.operation = SPI_WORD_SET(8) | SPI_MODE_GET(0),
+			.frequency = 1 * 1000 * 1000,
+		}}};
 
 // The data struct is static, but initialized at run time
 static struct sensor_squid_data sensor_squid_data_inst;
 
 // We won't rely on the device tree to load the driver.
-DEVICE_DEFINE(sensor_squid,						  // dev name unique token as a C identifier
-			  "SENSOR_SQUID",					  // String name for the device.
-			  sensor_squid_init,				  // initialization function
-			  NULL,								  // power management resources...
-			  &sensor_squid_data_inst,			  // pointer to the data struct
-			  &sensor_squid_config_inst,		  // pointer to the config struct
-			  POST_KERNEL,						  // Initialize the kernel first
-			  CONFIG_KERNEL_INIT_PRIORITY_DEVICE, // initialization priority
-			  NULL);							  // No API pointer
+DEVICE_DEFINE(sensor_squid,				 // dev name unique token as a C identifier
+			  "SENSOR_SQUID",			 // String name for the device.
+			  sensor_squid_init,		 // initialization function
+			  NULL,						 // power management resources...
+			  &sensor_squid_data_inst,	 // pointer to the data struct
+			  &sensor_squid_config_inst, // pointer to the config struct
+			  APPLICATION,				 // Initialize the kernel first
+			  32,						 // initialization priority
+			  NULL);					 // No API pointer
