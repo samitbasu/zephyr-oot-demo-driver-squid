@@ -7,5 +7,7 @@ A test of how to use ZephyrOS with an out of tree module.  Inspired by:
 Weirdness -
 * You cannot just make up a vendor prefix, even in an out-of-tree module.
 
-![alt squid](squid.mp4)
+
+
+https://user-images.githubusercontent.com/5354222/218214371-6f64a58c-a959-4e74-a040-e594467466cb.mp4
 
