@@ -18,17 +18,12 @@ extern "C"
 	/**
 	 * Turn on the LED... Very sparkles!
 	 */
-	void sensor_squid_led(const struct device *dev, bool state);
+	void sensor_squid_update(const struct device *dev, int frame);
 
 	/**
-	 * Retrieve the state of the LED...
+	 * Retrieve the state of the buttons...
 	 */
-	bool sensor_squid_state(const struct device *dev);
-
-	/**
-	 * Send a greeting...
-	 */
-	//	void sensor_squid_greet(const struct device *dev, int number);
+	uint8_t sensor_squid_state(const struct device *dev);
 
 #ifdef __cplusplus
 }

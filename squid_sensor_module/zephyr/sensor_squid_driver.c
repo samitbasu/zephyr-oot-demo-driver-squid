@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#define DT_DRV_COMPAT zephyr,squid
+
 #include "sensor_squid_driver.h"
 #include <zephyr/types.h>
 #include <zephyr/drivers/gpio.h>
@@ -13,8 +15,9 @@
 #include <zephyr/sys/printk.h>
 #include <string.h>
 
-#define LED0_NODE DT_ALIAS(led0)
-#define SPI1_NODE DT_NODELABEL(spi1)
+#define BUTTON_FASTER_NODE DT_ALIAS(sw0)
+#define BUTTON_SLOWER_NODE DT_ALIAS(sw2)
+#define SQUID_NODE DT_NODELABEL(squid)
 
 #define MAX7219_SEGMENTS_PER_DIGIT 8
 #define MAX7219_DIGITS_PER_DEVICE 8
@@ -45,9 +48,7 @@
  */
 struct sensor_squid_data
 {
-	bool led_state;
-	uint8_t digit_buf[8];
-	uint8_t tx_buf[16];
+	uint8_t tx_buf[2];
 };
 
 /**
@@ -55,8 +56,10 @@ struct sensor_squid_data
  */
 struct sensor_squid_config
 {
-	struct gpio_dt_spec pin;
+	struct gpio_dt_spec pin_faster;
+	struct gpio_dt_spec pin_slower;
 	struct spi_dt_spec spi;
+	uint16_t frame_bufs[4][4];
 };
 
 static int max7219_transmit(const struct device *dev, const uint8_t addr, const uint8_t value)
@@ -83,11 +86,19 @@ sensor_squid_init(const struct device *dev)
 	const struct sensor_squid_config *config = dev->config;
 	struct sensor_squid_data *data = dev->data;
 	printk("INIT\n");
-	if (!gpio_is_ready_dt(&config->pin))
+	if (!gpio_is_ready_dt(&config->pin_faster))
 	{
 		return -ENODEV;
 	}
-	if (gpio_pin_configure_dt(&config->pin, GPIO_OUTPUT_ACTIVE) < 0)
+	if (!gpio_is_ready_dt(&config->pin_slower))
+	{
+		return -ENODEV;
+	}
+	if (gpio_pin_configure_dt(&config->pin_faster, GPIO_INPUT) < 0)
+	{
+		return -ENODEV;
+	}
+	if (gpio_pin_configure_dt(&config->pin_slower, GPIO_INPUT) < 0)
 	{
 		return -ENODEV;
 	}
@@ -97,44 +108,55 @@ sensor_squid_init(const struct device *dev)
 		return -ENODEV;
 	}
 	printk("SPI INITIALIZED\n");
-	memset(data->digit_buf, 0xA0, 8);
 	// Exit test mode
 	
 	max7219_transmit(dev, MAX7219_REG_DISPLAY_TEST, MAX7219_LEAVE_DISPLAY_TEST_MODE);
 	max7219_transmit(dev, MAX7219_REG_DECODE_MODE, MAX7219_NO_DECODE);
 	max7219_transmit(dev, MAX7219_REG_INTENSITY, 0x3);
 	max7219_transmit(dev, MAX7219_REG_SCAN_LIMIT, 7);
-	max7219_transmit(dev, 1, 0x5F);
-	max7219_transmit(dev, 2, 0x43);
-	max7219_transmit(dev, 3, 0xA2);
+/*	max7219_transmit(dev, 1, 0x3E);
+	max7219_transmit(dev, 2, 0x41);
+	max7219_transmit(dev, 3, 0x55);
+	max7219_transmit(dev, 4, 0x41);
+	max7219_transmit(dev, 5, 0x32);
+	max7219_transmit(dev, 6, 0x2E);
+	max7219_transmit(dev, 7, 0x49);
+	max7219_transmit(dev, 8, 0x91);*/
 	max7219_transmit(dev, MAX7219_REG_SHUTDOWN, MAX7219_LEAVE_SHUTDOWN_MODE);
-	data->led_state = false;
 	return 0;
 }
 
-void sensor_squid_led(const struct device *dev, bool state)
+void sensor_squid_update(const struct device *dev, int frame) {
+	const struct sensor_squid_config *config = dev->config;
+	struct sensor_squid_data *data = dev->data;
+	const uint16_t *frame_ptr = config->frame_bufs[frame];
+	for (int i=0;i<4;i++) {
+		max7219_transmit(dev, 2*i+1, frame_ptr[i] & 0xFF);
+		max7219_transmit(dev, 2*i+2, (frame_ptr[i] & 0xFF00) >> 8);
+	}
+}
+
+uint8_t sensor_squid_state(const struct device *dev)
 {
 	const struct sensor_squid_config *config = dev->config;
 	struct sensor_squid_data *data = dev->data;
-	gpio_pin_set_dt(&config->pin, state);
-	data->led_state = state;
-}
-
-bool sensor_squid_state(const struct device *dev)
-{
-	struct sensor_squid_data *data = dev->data;
-	return data->led_state;
+	uint8_t buttons = 0;
+	if (gpio_pin_get_dt(&config->pin_faster)) {
+		buttons |= 1;
+	}
+	if (gpio_pin_get_dt(&config->pin_slower)) {
+		buttons |= 2;
+	}
+	return buttons;
 }
 
 // The config struct is static and initialized at compile time.
 static const struct sensor_squid_config sensor_squid_config_inst = {
-	.pin = GPIO_DT_SPEC_GET(LED0_NODE, gpios),
-	.spi = {
-		.bus = DEVICE_DT_GET(SPI1_NODE),
-		.config = {
-			.operation = SPI_WORD_SET(8) | SPI_MODE_GET(0),
-			.frequency = 1 * 1000 * 1000,
-		}}};
+	.pin_faster = GPIO_DT_SPEC_GET(BUTTON_FASTER_NODE, gpios),
+	.pin_slower = GPIO_DT_SPEC_GET(BUTTON_SLOWER_NODE, gpios),
+	.spi = SPI_DT_SPEC_GET(SQUID_NODE, SPI_WORD_SET(8) | SPI_MODE_GET(0), 0),
+	.frame_bufs = {{0x413e,0x4155,0x2e32,0x9149},{0x3e00,0x5541,0x3e41,0x9149},{0x7c00,0xaa82,0x7c82,0xa354},{0x827c,0x82aa,0x927c,0x498a}},
+};
 
 // The data struct is static, but initialized at run time
 static struct sensor_squid_data sensor_squid_data_inst;

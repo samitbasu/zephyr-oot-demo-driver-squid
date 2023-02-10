@@ -1,0 +1,5 @@
+description: Sparkle Squid Thing
+
+compatible: "zephyr,squid"
+
+include: spi-device.yaml

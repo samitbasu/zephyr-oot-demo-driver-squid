@@ -4,3 +4,5 @@ A test of how to use ZephyrOS with an out of tree module.  Inspired by:
 * [https://stackoverflow.com/questions/62358554/zephyros-how-to-add-driver-module-to-out-of-tree-project] StackOverflow (self-answered) question
 * [https://blog.golioth.io/adding-an-out-of-tree-sensor-driver-to-zephyr/] Tutorial
 
+Weirdness -
+* You cannot just make up a vendor prefix, even in an out-of-tree module.
